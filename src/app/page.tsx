@@ -17,6 +17,7 @@ const ImageDithering: React.FC = () => {
   const originalImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
+    console.log('Stretegy changed');
     const initialConfig: Record<string, number | boolean> = {};
     strategy.config.attributes.forEach((attr) => {
       initialConfig[attr.name] = attr.default;
@@ -71,6 +72,7 @@ const ImageDithering: React.FC = () => {
 
   useEffect(() => {
     if (originalImageRef.current) {
+      console.log('Change detected');
       applyDithering();
     }
   }, [image, strategy, config]);
