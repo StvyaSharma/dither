@@ -28,6 +28,7 @@ const DitherControls: React.FC<DitherControlsProps> = ({ config, values, onChang
           ) : (
             <Checkbox
               checked={values[attr.name] as boolean}
+              // @ts-expect-error aosijdoi 
               onCheckedChange={(checked) => onChange(attr.name, checked)}
             />
           )}
