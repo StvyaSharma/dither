@@ -1,23 +1,31 @@
 // components/ImageDithering.tsx
 
-"use client"
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import DitherControls from '@/components/DitherControls';
-import { ditheringStrategies } from '../strategies/ditheringStrategies';
-import { DitheringStrategy } from '../types/dithering';
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import DitherControls from "@/components/DitherControls";
+import { ditheringStrategies } from "@/strategies/ditheringStrategies";
+import { DitheringStrategy } from "../types/dithering";
 
 const ImageDithering: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
-  const [strategy, setStrategy] = useState<DitheringStrategy>(ditheringStrategies[0]);
+  const [strategy, setStrategy] = useState<DitheringStrategy>(
+    ditheringStrategies[0],
+  );
   const [config, setConfig] = useState<Record<string, number | boolean>>({});
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    console.log('Stretegy changed');
+    console.log("Stretegy changed");
     const initialConfig: Record<string, number | boolean> = {};
     strategy.config.attributes.forEach((attr) => {
       initialConfig[attr.name] = attr.default;
@@ -46,7 +54,7 @@ const ImageDithering: React.FC = () => {
     if (!originalImageRef.current || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const img = originalImageRef.current;
@@ -56,15 +64,18 @@ const ImageDithering: React.FC = () => {
     ctx.drawImage(img, 0, 0);
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const ditheredImageData = strategy.config.algorithm.dither(imageData, config);
+    const ditheredImageData = strategy.config.algorithm.dither(
+      imageData,
+      config,
+    );
 
     ctx.putImageData(ditheredImageData, 0, 0);
   };
 
   const exportImage = () => {
     if (canvasRef.current) {
-      const link = document.createElement('a');
-      link.download = 'dithered_image.png';
+      const link = document.createElement("a");
+      link.download = "dithered_image.png";
       link.href = canvasRef.current.toDataURL();
       link.click();
     }
@@ -72,7 +83,7 @@ const ImageDithering: React.FC = () => {
 
   useEffect(() => {
     if (originalImageRef.current) {
-      console.log('Change detected');
+      console.log("Change detected");
       applyDithering();
     }
   }, [image, strategy, config]);
@@ -85,23 +96,46 @@ const ImageDithering: React.FC = () => {
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Image Dithering</h1>
       <div className="mb-4">
-        <input type="file" accept="image/*" onChange={handleImageUpload} className="mb-2" />
-        <Select onValueChange={(value) => setStrategy(ditheringStrategies.find(s => s.name === value) || ditheringStrategies[0])}>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="mb-2"
+        />
+        <Select
+          onValueChange={(value) =>
+            setStrategy(
+              ditheringStrategies.find((s) => s.name === value) ||
+                ditheringStrategies[0],
+            )
+          }
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select effect" />
           </SelectTrigger>
           <SelectContent>
             {ditheringStrategies.map((s) => (
-              <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+              <SelectItem key={s.name} value={s.name}>
+                {s.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-      <DitherControls config={strategy.config} values={config} onChange={handleConfigChange} />
+      <DitherControls
+        config={strategy.config}
+        values={config}
+        onChange={handleConfigChange}
+      />
       <div className="mt-4">
-        <canvas ref={canvasRef} className="max-w-full h-auto border border-gray-300" />
+        <canvas
+          ref={canvasRef}
+          className="max-w-full h-auto border border-gray-300"
+        />
       </div>
-      <Button onClick={exportImage} className="mt-4">Export Dithered Image</Button>
+      <Button onClick={exportImage} className="mt-4">
+        Export Dithered Image
+      </Button>
     </div>
   );
 };

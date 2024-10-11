@@ -1,6 +1,6 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class GradientBasedDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -13,7 +13,7 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
     const scale = config.scale as number;
     const errorPropagationFactor = config.errorPropagationFactor as number;
     const ditheringStrength = config.ditheringStrength as number;
-    const serpentineProcessing = config.serpentineProcessing as boolean;
+    const gradientStrength = config.gradientStrength as number;
 
     // Create a new ImageData object with scaled dimensions
     const scaledWidth = Math.floor(width * scale);
@@ -44,24 +44,42 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
       return value < threshold ? 0 : 255;
     };
 
+    const calculateGradient = (x: number, y: number): number => {
+      const gx = (getPixel(x + 1, y) - getPixel(x - 1, y)) / 2;
+      const gy = (getPixel(x, y + 1) - getPixel(x, y - 1)) / 2;
+      return Math.sqrt(gx * gx + gy * gy);
+    };
+
+    const getPixel = (x: number, y: number): number => {
+      if (x < 0 || x >= scaledWidth || y < 0 || y >= scaledHeight) {
+        return 0;
+      }
+      const index = (y * scaledWidth + x) * 4;
+      return scaledData.data[index];
+    };
+
     const distributeError = (
       x: number,
       y: number,
       error: number,
       weight: number,
+      gradient: number,
     ) => {
       if (x >= 0 && x < scaledWidth && y >= 0 && y < scaledHeight) {
         const index = (y * scaledWidth + x) * 4;
+        const gradientFactor = 1 - (gradient / 255) * gradientStrength;
         scaledData.data[index] +=
-          error * weight * errorPropagationFactor * ditheringStrength;
+          error *
+          weight *
+          errorPropagationFactor *
+          ditheringStrength *
+          gradientFactor;
       }
     };
 
     for (let y = 0; y < scaledHeight; y++) {
-      const reverse = serpentineProcessing && y % 2 === 1;
       for (let x = 0; x < scaledWidth; x++) {
-        const actualX = reverse ? scaledWidth - 1 - x : x;
-        const i = (y * scaledWidth + actualX) * 4;
+        const i = (y * scaledWidth + x) * 4;
         const oldPixel = scaledData.data[i];
         const newPixel = thresholdValue(quantize(oldPixel));
         scaledData.data[i] =
@@ -69,18 +87,12 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
           scaledData.data[i + 2] =
             newPixel;
         const error = oldPixel - newPixel;
+        const gradient = calculateGradient(x, y);
 
-        if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
-        } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
-        }
+        distributeError(x + 1, y, error, 7 / 16, gradient);
+        distributeError(x - 1, y + 1, error, 3 / 16, gradient);
+        distributeError(x, y + 1, error, 5 / 16, gradient);
+        distributeError(x + 1, y + 1, error, 1 / 16, gradient);
       }
     }
 
@@ -103,11 +115,11 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+export const GradientBasedDitheringStrategy: DitheringStrategy = {
+  name: "Gradient-based",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Gradient-based",
+    algorithm: new GradientBasedDithering(),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {
@@ -142,7 +154,14 @@ export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
         step: 0.1,
         default: 1,
       },
-      { name: "serpentineProcessing", type: "boolean", default: false },
+      {
+        name: "gradientStrength",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.1,
+        default: 0.5,
+      },
     ],
   },
 };

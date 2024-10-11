@@ -1,6 +1,6 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class StochasticScreeningDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -11,9 +11,8 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
     const quantizationLevels = config.quantizationLevels as number;
     const threshold = config.threshold as number;
     const scale = config.scale as number;
-    const errorPropagationFactor = config.errorPropagationFactor as number;
+    const noiseIntensity = config.noiseIntensity as number;
     const ditheringStrength = config.ditheringStrength as number;
-    const serpentineProcessing = config.serpentineProcessing as boolean;
 
     // Create a new ImageData object with scaled dimensions
     const scaledWidth = Math.floor(width * scale);
@@ -40,47 +39,29 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
       return Math.round(Math.round(value / step) * step);
     };
 
-    const thresholdValue = (value: number): number => {
-      return value < threshold ? 0 : 255;
+    const thresholdValue = (value: number, noise: number): number => {
+      return value + noise < threshold ? 0 : 255;
     };
 
-    const distributeError = (
-      x: number,
-      y: number,
-      error: number,
-      weight: number,
-    ) => {
-      if (x >= 0 && x < scaledWidth && y >= 0 && y < scaledHeight) {
-        const index = (y * scaledWidth + x) * 4;
-        scaledData.data[index] +=
-          error * weight * errorPropagationFactor * ditheringStrength;
-      }
-    };
-
+    // Stochastic screening dithering
     for (let y = 0; y < scaledHeight; y++) {
-      const reverse = serpentineProcessing && y % 2 === 1;
       for (let x = 0; x < scaledWidth; x++) {
-        const actualX = reverse ? scaledWidth - 1 - x : x;
-        const i = (y * scaledWidth + actualX) * 4;
+        const i = (y * scaledWidth + x) * 4;
         const oldPixel = scaledData.data[i];
-        const newPixel = thresholdValue(quantize(oldPixel));
+
+        // Generate random noise
+        const noise = (Math.random() - 0.5) * 2 * noiseIntensity * 255;
+
+        // Apply dithering with noise
+        const newPixel = thresholdValue(
+          quantize(oldPixel),
+          noise * ditheringStrength,
+        );
+
         scaledData.data[i] =
           scaledData.data[i + 1] =
           scaledData.data[i + 2] =
             newPixel;
-        const error = oldPixel - newPixel;
-
-        if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
-        } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
-        }
       }
     }
 
@@ -103,11 +84,11 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+export const StochasticScreeningDitheringStrategy: DitheringStrategy = {
+  name: "Stochastic Screening",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Stochastic Screening",
+    algorithm: new StochasticScreeningDithering(),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {
@@ -127,12 +108,12 @@ export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
         default: 128,
       },
       {
-        name: "errorPropagationFactor",
+        name: "noiseIntensity",
         type: "range",
         min: 0,
         max: 1,
         step: 0.1,
-        default: 1,
+        default: 0.5,
       },
       {
         name: "ditheringStrength",
@@ -142,7 +123,6 @@ export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
         step: 0.1,
         default: 1,
       },
-      { name: "serpentineProcessing", type: "boolean", default: false },
     ],
   },
 };

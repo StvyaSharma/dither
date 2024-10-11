@@ -1,6 +1,6 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class LatticeBoltzmannDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -11,9 +11,9 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
     const quantizationLevels = config.quantizationLevels as number;
     const threshold = config.threshold as number;
     const scale = config.scale as number;
-    const errorPropagationFactor = config.errorPropagationFactor as number;
-    const ditheringStrength = config.ditheringStrength as number;
-    const serpentineProcessing = config.serpentineProcessing as boolean;
+    const relaxationTime = config.relaxationTime as number;
+    const iterationCount = config.iterationCount as number;
+    const diffusionStrength = config.diffusionStrength as number;
 
     // Create a new ImageData object with scaled dimensions
     const scaledWidth = Math.floor(width * scale);
@@ -44,43 +44,62 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
       return value < threshold ? 0 : 255;
     };
 
-    const distributeError = (
-      x: number,
-      y: number,
-      error: number,
-      weight: number,
-    ) => {
-      if (x >= 0 && x < scaledWidth && y >= 0 && y < scaledHeight) {
-        const index = (y * scaledWidth + x) * 4;
-        scaledData.data[index] +=
-          error * weight * errorPropagationFactor * ditheringStrength;
-      }
-    };
+    // Initialize lattice
+    const lattice = new Array(scaledHeight)
+      .fill(null)
+      .map(() => new Array(scaledWidth).fill(0));
 
-    for (let y = 0; y < scaledHeight; y++) {
-      const reverse = serpentineProcessing && y % 2 === 1;
-      for (let x = 0; x < scaledWidth; x++) {
-        const actualX = reverse ? scaledWidth - 1 - x : x;
-        const i = (y * scaledWidth + actualX) * 4;
-        const oldPixel = scaledData.data[i];
-        const newPixel = thresholdValue(quantize(oldPixel));
-        scaledData.data[i] =
-          scaledData.data[i + 1] =
-          scaledData.data[i + 2] =
-            newPixel;
-        const error = oldPixel - newPixel;
-
-        if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
-        } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
+    // Lattice-Boltzmann algorithm
+    for (let iter = 0; iter < iterationCount; iter++) {
+      // Collision step
+      for (let y = 0; y < scaledHeight; y++) {
+        for (let x = 0; x < scaledWidth; x++) {
+          const index = (y * scaledWidth + x) * 4;
+          const pixelValue = scaledData.data[index];
+          const equilibrium = quantize(pixelValue);
+          lattice[y][x] += (equilibrium - lattice[y][x]) / relaxationTime;
         }
+      }
+
+      // Streaming step
+      const newLattice = new Array(scaledHeight)
+        .fill(null)
+        .map(() => new Array(scaledWidth).fill(0));
+      for (let y = 0; y < scaledHeight; y++) {
+        for (let x = 0; x < scaledWidth; x++) {
+          const neighbors = [
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 1 },
+            { dx: -1, dy: -1 },
+            { dx: -1, dy: 1 },
+            { dx: 1, dy: -1 },
+            { dx: 1, dy: 1 },
+          ];
+
+          neighbors.forEach(({ dx, dy }) => {
+            const nx = (x + dx + scaledWidth) % scaledWidth;
+            const ny = (y + dy + scaledHeight) % scaledHeight;
+            newLattice[ny][nx] += (lattice[y][x] * diffusionStrength) / 8;
+          });
+
+          newLattice[y][x] += lattice[y][x] * (1 - diffusionStrength);
+        }
+      }
+
+      lattice.splice(0, lattice.length, ...newLattice);
+    }
+
+    // Apply dithering result
+    for (let y = 0; y < scaledHeight; y++) {
+      for (let x = 0; x < scaledWidth; x++) {
+        const index = (y * scaledWidth + x) * 4;
+        const newPixel = thresholdValue(lattice[y][x]);
+        scaledData.data[index] =
+          scaledData.data[index + 1] =
+          scaledData.data[index + 2] =
+            newPixel;
       }
     }
 
@@ -103,11 +122,11 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+export const LatticeBoltzmannDitheringStrategy: DitheringStrategy = {
+  name: "Lattice-Boltzmann",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Lattice-Boltzmann",
+    algorithm: new LatticeBoltzmannDithering(),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {
@@ -127,22 +146,29 @@ export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
         default: 128,
       },
       {
-        name: "errorPropagationFactor",
+        name: "relaxationTime",
         type: "range",
-        min: 0,
-        max: 1,
-        step: 0.1,
-        default: 1,
-      },
-      {
-        name: "ditheringStrength",
-        type: "range",
-        min: 0,
+        min: 0.1,
         max: 2,
         step: 0.1,
         default: 1,
       },
-      { name: "serpentineProcessing", type: "boolean", default: false },
+      {
+        name: "iterationCount",
+        type: "range",
+        min: 1,
+        max: 50,
+        step: 1,
+        default: 10,
+      },
+      {
+        name: "diffusionStrength",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.1,
+        default: 0.5,
+      },
     ],
   },
 };

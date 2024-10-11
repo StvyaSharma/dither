@@ -1,6 +1,6 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class BurkesDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -71,15 +71,21 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
         const error = oldPixel - newPixel;
 
         if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
+          distributeError(actualX + 1, y, error, 8 / 32);
+          distributeError(actualX + 2, y, error, 4 / 32);
+          distributeError(actualX - 2, y + 1, error, 2 / 32);
+          distributeError(actualX - 1, y + 1, error, 4 / 32);
+          distributeError(actualX, y + 1, error, 8 / 32);
+          distributeError(actualX + 1, y + 1, error, 4 / 32);
+          distributeError(actualX + 2, y + 1, error, 2 / 32);
         } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
+          distributeError(actualX - 1, y, error, 8 / 32);
+          distributeError(actualX - 2, y, error, 4 / 32);
+          distributeError(actualX + 2, y + 1, error, 2 / 32);
+          distributeError(actualX + 1, y + 1, error, 4 / 32);
+          distributeError(actualX, y + 1, error, 8 / 32);
+          distributeError(actualX - 1, y + 1, error, 4 / 32);
+          distributeError(actualX - 2, y + 1, error, 2 / 32);
         }
       }
     }
@@ -103,11 +109,11 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+export const BurkesDitheringStrategy: DitheringStrategy = {
+  name: "Burkes",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Burkes",
+    algorithm: new BurkesDithering(),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {

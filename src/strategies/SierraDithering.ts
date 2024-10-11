@@ -1,6 +1,14 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class SierraDithering implements DitheringAlgorithm {
+  private kernel: number[][];
+  private divisor: number;
+
+  constructor(kernel: number[][], divisor: number) {
+    this.kernel = kernel;
+    this.divisor = divisor;
+  }
+
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -53,7 +61,8 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
       if (x >= 0 && x < scaledWidth && y >= 0 && y < scaledHeight) {
         const index = (y * scaledWidth + x) * 4;
         scaledData.data[index] +=
-          error * weight * errorPropagationFactor * ditheringStrength;
+          (error * weight * errorPropagationFactor * ditheringStrength) /
+          this.divisor;
       }
     };
 
@@ -70,16 +79,14 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
             newPixel;
         const error = oldPixel - newPixel;
 
-        if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
-        } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
+        for (let ky = 0; ky < this.kernel.length; ky++) {
+          for (let kx = 0; kx < this.kernel[ky].length; kx++) {
+            const weight = this.kernel[ky][kx];
+            if (weight !== 0) {
+              const dx = reverse ? -kx : kx;
+              distributeError(actualX + dx, y + ky, error, weight);
+            }
+          }
         }
       }
     }
@@ -103,11 +110,115 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+const sierra3Kernel = [
+  [0, 0, 0, 5, 3],
+  [2, 4, 5, 4, 2],
+  [0, 2, 3, 2, 0],
+];
+
+const sierra2Kernel = [
+  [0, 0, 0, 4, 3],
+  [1, 2, 3, 2, 1],
+];
+
+const sierraLiteKernel = [
+  [0, 0, 2],
+  [1, 1, 0],
+];
+
+export const Sierra3DitheringStrategy: DitheringStrategy = {
+  name: "Sierra-3",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Sierra-3",
+    algorithm: new SierraDithering(sierra3Kernel, 32),
+    attributes: [
+      { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
+      {
+        name: "quantizationLevels",
+        type: "range",
+        min: 2,
+        max: 16,
+        step: 1,
+        default: 2,
+      },
+      {
+        name: "threshold",
+        type: "range",
+        min: 0,
+        max: 255,
+        step: 1,
+        default: 128,
+      },
+      {
+        name: "errorPropagationFactor",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.1,
+        default: 1,
+      },
+      {
+        name: "ditheringStrength",
+        type: "range",
+        min: 0,
+        max: 2,
+        step: 0.1,
+        default: 1,
+      },
+      { name: "serpentineProcessing", type: "boolean", default: false },
+    ],
+  },
+};
+
+export const Sierra2DitheringStrategy: DitheringStrategy = {
+  name: "Sierra-2",
+  config: {
+    name: "Sierra-2",
+    algorithm: new SierraDithering(sierra2Kernel, 16),
+    attributes: [
+      { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
+      {
+        name: "quantizationLevels",
+        type: "range",
+        min: 2,
+        max: 16,
+        step: 1,
+        default: 2,
+      },
+      {
+        name: "threshold",
+        type: "range",
+        min: 0,
+        max: 255,
+        step: 1,
+        default: 128,
+      },
+      {
+        name: "errorPropagationFactor",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.1,
+        default: 1,
+      },
+      {
+        name: "ditheringStrength",
+        type: "range",
+        min: 0,
+        max: 2,
+        step: 0.1,
+        default: 1,
+      },
+      { name: "serpentineProcessing", type: "boolean", default: false },
+    ],
+  },
+};
+
+export const SierraLiteDitheringStrategy: DitheringStrategy = {
+  name: "Sierra Lite",
+  config: {
+    name: "Sierra Lite",
+    algorithm: new SierraDithering(sierraLiteKernel, 4),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {

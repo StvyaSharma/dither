@@ -1,6 +1,6 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
 
-class FloydSteinbergDithering implements DitheringAlgorithm {
+class StuckiDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
     config: Record<string, number | boolean>,
@@ -71,15 +71,33 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
         const error = oldPixel - newPixel;
 
         if (!reverse) {
-          distributeError(actualX + 1, y, error, 7 / 16);
-          distributeError(actualX - 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX + 1, y + 1, error, 1 / 16);
+          // Stucki error diffusion pattern (forward)
+          distributeError(actualX + 1, y, error, 8 / 42);
+          distributeError(actualX + 2, y, error, 4 / 42);
+          distributeError(actualX - 2, y + 1, error, 2 / 42);
+          distributeError(actualX - 1, y + 1, error, 4 / 42);
+          distributeError(actualX, y + 1, error, 8 / 42);
+          distributeError(actualX + 1, y + 1, error, 4 / 42);
+          distributeError(actualX + 2, y + 1, error, 2 / 42);
+          distributeError(actualX - 2, y + 2, error, 1 / 42);
+          distributeError(actualX - 1, y + 2, error, 2 / 42);
+          distributeError(actualX, y + 2, error, 4 / 42);
+          distributeError(actualX + 1, y + 2, error, 2 / 42);
+          distributeError(actualX + 2, y + 2, error, 1 / 42);
         } else {
-          distributeError(actualX - 1, y, error, 7 / 16);
-          distributeError(actualX + 1, y + 1, error, 3 / 16);
-          distributeError(actualX, y + 1, error, 5 / 16);
-          distributeError(actualX - 1, y + 1, error, 1 / 16);
+          // Stucki error diffusion pattern (reverse)
+          distributeError(actualX - 1, y, error, 8 / 42);
+          distributeError(actualX - 2, y, error, 4 / 42);
+          distributeError(actualX + 2, y + 1, error, 2 / 42);
+          distributeError(actualX + 1, y + 1, error, 4 / 42);
+          distributeError(actualX, y + 1, error, 8 / 42);
+          distributeError(actualX - 1, y + 1, error, 4 / 42);
+          distributeError(actualX - 2, y + 1, error, 2 / 42);
+          distributeError(actualX + 2, y + 2, error, 1 / 42);
+          distributeError(actualX + 1, y + 2, error, 2 / 42);
+          distributeError(actualX, y + 2, error, 4 / 42);
+          distributeError(actualX - 1, y + 2, error, 2 / 42);
+          distributeError(actualX - 2, y + 2, error, 1 / 42);
         }
       }
     }
@@ -103,11 +121,11 @@ class FloydSteinbergDithering implements DitheringAlgorithm {
   }
 }
 
-export const FloydSteinbergDitheringStrategy: DitheringStrategy = {
-  name: "Floyd-Steinberg",
+export const StuckiDitheringStrategy: DitheringStrategy = {
+  name: "Stucki",
   config: {
-    name: "Floyd-Steinberg",
-    algorithm: new FloydSteinbergDithering(),
+    name: "Stucki",
+    algorithm: new StuckiDithering(),
     attributes: [
       { name: "scale", type: "range", min: 0.1, max: 1, step: 0.1, default: 1 },
       {
