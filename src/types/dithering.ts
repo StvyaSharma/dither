@@ -8,17 +8,17 @@ export interface DitherConfig {
 
 export interface DitheringAttribute {
   name: string;
-  type: "range" | "boolean" | "select";
+  type: "range" | "boolean";
   min?: number;
   max?: number;
   step?: number;
-  default: number | boolean | string;
+  default: number | boolean;
 }
 
 export interface DitheringAlgorithm {
   dither(
     imageData: ImageData,
-    config: Record<string, number | boolean | string>,
+    config: Record<string, number | boolean>,
   ): ImageData;
 }
 
