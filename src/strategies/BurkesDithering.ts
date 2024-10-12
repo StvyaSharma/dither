@@ -1,5 +1,29 @@
 import { DitheringAlgorithm, DitheringStrategy } from "../types/dithering";
-
+/**
+ * Class representing the Burkes Dithering algorithm.
+ *
+ * Burkes Dithering is a type of error diffusion dithering algorithm used in image processing.
+ * It works by distributing the quantization error of a pixel to its neighboring pixels
+ * according to a specific pattern, which helps in achieving a visually appealing result.
+ *
+ * The error diffusion pattern for Burkes Dithering is as follows:
+ *
+ * Current Pixel: X
+ *
+ * Pattern:
+ *
+ *     X   8/32  4/32
+ * 2/32  4/32  8/32  4/32  2/32
+ *
+ * This pattern ensures that the error is spread out over a larger area, reducing artifacts
+ * and improving the overall quality of the dithered image.
+ *
+ * For more information on Burkes Dithering, you can refer to:
+ * - https://en.wikipedia.org/wiki/Dither
+ * - https://tannerhelland.com/2012/12/28/dithering-eleven-algorithms-source-code.html
+ *
+ * @implements {DitheringAlgorithm}
+ */
 class BurkesDithering implements DitheringAlgorithm {
   dither(
     imageData: ImageData,
